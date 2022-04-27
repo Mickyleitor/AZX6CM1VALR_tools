@@ -8,7 +8,7 @@ filename_csv = os.getcwd() + "\\trv.csv"
 n_sistema = 215
 if(len(sys.argv) > 1):
     n_sistema = int(sys.argv[1])
-n_valvula = 1
+n_valvula = 0
 if(len(sys.argv) > 2):
     n_valvula = int(sys.argv[2])
 
@@ -22,6 +22,18 @@ data_status = []
 textfile = list(enumerate(open(filename, 'r')))
 
 misistema = False
+
+# Filtra muestra por diferencia demasiado grande entre la muestra y el valor anterior
+def check_max_difference(data):
+    # Comprueba si hay muestra anterior
+    if(len(data_temperatura) > 0):
+        # Comprueba si la diferencia es demasiado grande o que el valor anterior sea nulo
+        if( (abs(data - data_temperatura[len(data_temperatura)-1]) < 60) or (data_temperatura[len(data_temperatura)-1] == 0)):
+            return True
+        else :
+            return False
+    else :
+        return True
 
 for lineindex,line in textfile:
     # Busca mi sistema
@@ -57,18 +69,20 @@ for lineindex,line in textfile:
                 # Search for the data in the line
                 for index in range(len(line)):
                     if line[index] == ' ':
-                        # Temperatura de la valvula
-                        # dataY.append(int(line[index+1:len(line)], base=16) & 255)
                         # Temperatura de la valvula sin offset
                         offset = ((int(line[index+1:len(line)], base=16) >> 16) & 255)
                         temperatura = int(line[index+1:len(line)], base=16) & 4095
                         if( offset > 6 ):
-                            data_temperatura.append(temperatura + 60)
-                        elif ( offset == 0 ):
+                            temperatura = temperatura + 60
+                        elif ( offset != 0 ):
+                            temperatura = temperatura - 60
+
+                        # Si la diferencia es menor de 60 (por un cambio de offset que todavia no se ha aplicado) añadir dato
+                        # Si la diferencia es mayor de 60 (por un cambio de offset que ya se ha aplicado) no añadir dato
+                        if( check_max_difference(temperatura) ):
                             data_temperatura.append(temperatura)
                         else :
-                            data_temperatura.append(temperatura - 60)
-                        # dataY.append(int(line[index+1:len(line)], base=16) & 255)
+                            data_temperatura.append(data_temperatura[len(data_temperatura)-1])
                         break
 
 data_csv = "Time\tSetpoint\tTemperatura\tCobertura\tEstado\n"
